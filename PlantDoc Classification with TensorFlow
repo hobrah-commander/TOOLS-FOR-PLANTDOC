@@ -1,0 +1,45 @@
+# Import necessary libraries
+import tensorflow as tf
+
+# Check if TensorFlow is available
+if not tf.__version__:
+    print("TensorFlow could not be found. Please check that it is installed and available.")
+    exit()
+
+try:
+    # Create a TensorFlow Dataset from the PlantDoc dataset files
+    train_dataset = tf.data.Dataset.from_generator(
+        lambda: np.load("plantdoc_train.npz"),
+        (tf.float32, tf.int64),
+        (tf.TensorShape([None, 256, 256, 3]), tf.TensorShape([None]))
+    )
+
+    test_dataset = tf.data.Dataset.from_generator(
+        lambda: np.load("plantdoc_test.npz"),
+        (tf.float32, tf.int64),
+        (tf.TensorShape([None, 256, 256, 3]), tf.TensorShape([None]))
+    )
+
+    # Preprocess the data using the Dataset.map() method
+    def preprocess_data(x, y):
+        x = tf.image.resize(x, [224, 224])
+        x = tf.keras.applications.xception.preprocess_input(x)
+        return x, y
+
+    train_dataset = train_dataset.map(preprocess_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    test_dataset = test_dataset.map(preprocess_data)
+
+    # Split the training dataset into training and validation sets
+    train_dataset = train_dataset.take(int(0.8 * train_dataset.cardinality()))
+    val_dataset = train_dataset.skip(int(0.8 * train_dataset.cardinality()))
+
+    # Print the sizes of the datasets
+    print("Training set size:", train_dataset.cardinality())
+    print("Validation set size:", val_dataset.cardinality())
+    print("Testing set size:", test_dataset.cardinality())
+except FileNotFoundError:
+    print("The PlantDoc dataset could not be found. Please check that the files 'plantdoc_train.npz' and 'plantdoc_test.npz' exist and are in the correct location.")
+except ValueError:
+    print("The data in the PlantDoc dataset could not be converted to TensorFlow Datasets. Please check that the data is in the correct format.")
+except Exception as e:
+    print("An unexpected error occurred:", e)
