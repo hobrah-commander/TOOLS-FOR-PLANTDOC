@@ -7,23 +7,23 @@ import random
 # Set the CUDA_VISIBLE_DEVICES environment variable to use only the first GPU
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 # Check if a GPU is available
-if tf.test.is_gpu_available():
+if tensorflow.test.is_gpu_available():
     # Get the name of the GPU device
-    gpu_name = tf.test.gpu_device_name()
+    gpu_name = tensorflow.test.gpu_device_name()
     print(f"Using GPU: {gpu_name}")
 else:
     print("No GPU available")
 
-from tensorflow.compat.v1.keras import regularizers
-from tensorflow.compat.v1.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.compat.v1.keras.layers import Input, Dense, Conv2D, MaxPooling2D
-from tensorflow.compat.v1.keras.applications import ResNet50
-from tensorflow.compat.v1.keras.models import Model
-from tensorflow.compat.v1.keras.optimizers import RMSprop
-from tensorflow.compat.v1.keras.callbacks import EarlyStopping, ReduceLROnPlateau, LearningRateScheduler
+from tensorflow.keras import regularizers
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.layers import Input, Dense, Conv2D, MaxPooling2D
+from tensorflow.keras.applications import ResNet50
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, LearningRateScheduler
 
 # Import the necessary classes from the Keras and scikit-learn libraries
 from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
