@@ -29,9 +29,6 @@ from tensorflow.compat.v1.keras.callbacks import EarlyStopping, ReduceLROnPlatea
 from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
 from sklearn.model_selection import GridSearchCV
 
-# Set the TensorFlow log level to avoid printing verbose messages
-tf.logging.set_verbosity(tf.logging.ERROR)
-
 # Import Deap for Evolutionary Training    
 import deap
 from deap import base, creator, tools
