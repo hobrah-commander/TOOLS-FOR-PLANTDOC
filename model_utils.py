@@ -10,23 +10,23 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import tensorflow as tf
 
 # Check if a GPU is available
-if tensorflow.test.is_gpu_available():
+if tf.test.is_gpu_available():
     # Get the name of the GPU device
     gpu_name = tensorflow.test.gpu_device_name()
     print(f"Using GPU: {gpu_name}")
 else:
     print("No GPU available")
 
-from tensorflow.keras import regularizers
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.layers import Input, Dense, Conv2D, MaxPooling2D
-from tensorflow.keras.applications import ResNet50
-from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import RMSprop
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, LearningRateScheduler
+from tf.keras import regularizers
+from tf.keras.preprocessing.image import ImageDataGenerator
+from tf.keras.layers import Input, Dense, Conv2D, MaxPooling2D
+from tf.keras.applications import ResNet50
+from tf.keras.models import Model
+from tf.keras.optimizers import RMSprop
+from tf.keras.callbacks import EarlyStopping, ReduceLROnPlateau, LearningRateScheduler
 
 # Import the necessary classes from the Keras and scikit-learn libraries
-from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
+from tf.keras.wrappers.scikit_learn import KerasClassifier
 from sklearn.model_selection import GridSearchCV
 
     # Generate a random seed based on the current time
@@ -35,25 +35,6 @@ from sklearn.model_selection import GridSearchCV
     # Use the random seed to initialize the random number generator
     random.seed(random_seed)
 
-    # Set the random seed to ensure reproducibility
-    RANDOM_SEED = random_seed
-    np.random.seed(RANDOM_SEED)
-
-#Import visualization_utils
-import visualizations_utils
-
-# Build the model
-inputs = Input(...)
-x = Dense(128, activation='relu', kernel_regularizer=regularizers.l2(reg))(inputs)
-x = Dense(64, activation='relu', kernel_regularizer=regularizers.l2(reg))(x)
-outputs = Dense(10, activation='softmax')(x)
-
-# Compile the model
-model = Model(inputs=inputs, outputs=outputs)
-model.compile(optimizer=RMSprop(lr=lr), loss="categorical_crossentropy", metrics=["accuracy"])
-
-    return model
-
 # Import Deap for Evolutionary Training    
 import deap
 from deap import base, creator, tools
@@ -61,10 +42,19 @@ from deap import base, creator, tools
 # Import the algorithms module from Deap
 from deap import algorithms
 
+# Import visualization_utils
+import visualization_utils
+
 # Define the toolbox
 toolbox = base.Toolbox()
 
-def create_model(lr, reg):
+# Generate a random seed based on the current time
+random_seed = int(time.time())
+
+def create_model(lr, reg, random_seed):
+    # Use the random seed to initialize the random number generator
+    random.seed(random_seed)
+
     # Build the model
     inputs = Input(...)
     x = Dense(128, activation='relu', kernel_regularizer=regularizers.l2(reg))(inputs)
@@ -77,6 +67,19 @@ def create_model(lr, reg):
 
     return model
 
+# Train the model with the specified hyperparameters
+model = create_model(lr, reg, random_seed)
+
+# Import Deap for Evolutionary Training    
+import deap
+from deap import base, creator, tools
+
+# Import the algorithms module from Deap
+from deap import algorithms
+
+# Define the toolbox
+toolbox = base.Toolbox()
+
 # Define a function to generate random hyperparameters
 def generate_hyperparameters():
     # Generate a random learning rate in the range [0.001, 0.1]
@@ -87,18 +90,18 @@ def generate_hyperparameters():
     
     return (lr, reg)
 
-    # Define an individual as a list of hyperparameters
-    creator.create("Individual", list, fitness=creator.FitnessMax)
+# Define an individual as a list of hyperparameters
+creator.create("Individual", list, fitness=creator.FitnessMax)
 
-    # Define the population as a list of individuals
-    toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+# Define the population as a list of individuals
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
-    # Define the mutation and crossover operators
-    toolbox.register("mate", tools.cxTwoPoint)
-    toolbox.register("mutate", tools.mutUniformInt, low=0, up=1, indpb=0.05)
+# Define the mutation and crossover operators
+toolbox.register("mate", tools.cxTwoPoint)
+toolbox.register("mutate", tools.mutUniformInt, low=0, up=1, indpb=0.05)
 
-    # Define the selection operator
-    toolbox.register("select", tools.selTournament, tournsize=3)
+# Define the selection operator
+toolbox.register("select", tools.selTournament, tournsize=3)
 
 # Define the evolutionary training function
 def evolutionary_train(X_train, y_train, X_val, y_val, epochs, population_size=10, n_generations=10):
