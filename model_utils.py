@@ -29,10 +29,6 @@ from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, Learnin
 from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
 from sklearn.model_selection import GridSearchCV
 
-# Import Deap for Evolutionary Training    
-import deap
-from deap import base, creator, tools
-
     # Generate a random seed based on the current time
     random_seed = int(time.time())
 
@@ -46,9 +42,50 @@ from deap import base, creator, tools
 #Import visualization_utils
 import visualizations_utils
 
+# Build the model
+inputs = Input(...)
+x = Dense(128, activation='relu', kernel_regularizer=regularizers.l2(reg))(inputs)
+x = Dense(64, activation='relu', kernel_regularizer=regularizers.l2(reg))(x)
+outputs = Dense(10, activation='softmax')(x)
+
+# Compile the model
+model = Model(inputs=inputs, outputs=outputs)
+model.compile(optimizer=RMSprop(lr=lr), loss="categorical_crossentropy", metrics=["accuracy"])
+
+    return model
+
+# Import Deap for Evolutionary Training    
+import deap
+from deap import base, creator, tools
+
+# Import the algorithms module from Deap
+from deap import algorithms
+
+# Define the toolbox
+toolbox = base.Toolbox()
+
+def create_model(lr, reg):
+    # Build the model
+    inputs = Input(...)
+    x = Dense(128, activation='relu', kernel_regularizer=regularizers.l2(reg))(inputs)
+    x = Dense(64, activation='relu', kernel_regularizer=regularizers.l2(reg))(x)
+    outputs = Dense(10, activation='softmax')(x)
+
+    # Compile the model
+    model = Model(inputs=inputs, outputs=outputs)
+    model.compile(optimizer=RMSprop(lr=lr), loss="categorical_crossentropy", metrics=["accuracy"])
+
+    return model
+
 # Define a function to generate random hyperparameters
 def generate_hyperparameters():
-    return (toolbox.lr(), toolbox.reg())
+    # Generate a random learning rate in the range [0.001, 0.1]
+    lr = random.uniform(0.001, 0.1)
+    
+    # Generate a random regularization parameter in the range [0.001, 0.1]
+    reg = random.uniform(0.001, 0.1)
+    
+    return (lr, reg)
 
     # Define an individual as a list of hyperparameters
     creator.create("Individual", list, fitness=creator.FitnessMax)
@@ -64,7 +101,7 @@ def generate_hyperparameters():
     toolbox.register("select", tools.selTournament, tournsize=3)
 
 # Define the evolutionary training function
-def evolutionary_train(model, X_train, y_train, X_val, y_val, epochs, population_size=10, n_generations=10):
+def evolutionary_train(X_train, y_train, X_val, y_val, epochs, population_size=10, n_generations=10):
     # Initialize the population
     population = toolbox.population(n=population_size)
 
@@ -74,13 +111,28 @@ def evolutionary_train(model, X_train, y_train, X_val, y_val, epochs, population
         offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.1)
 
         # Evaluate the fitness of the individuals in the offspring
-        fitnesses = model.evaluate(offspring, X_train, y_train, X_val, y_val, epochs=epochs)
+        fitnesses = []
+        for individual in offspring:
+            # Create a model using the hyperparameters from the individual
+            lr = individual[0]
+            reg = individual[1]
+            model = create_model(lr, reg)
+
+            # Evaluate the model on the training and validation sets
+            results = model.evaluate(X_train, y_train, X_val, y_val, epochs=epochs)
+
+            # Store the model's accuracy on the validation set
+            fitness = results[1]
+            fitnesses.append(fitness)
 
         # Select the best individuals from the current and next generations
         population = toolbox.select(population + offspring, k=population_size)
-
+       
     # Return the best individual in the final generation
     return population
+    
+    # Train the model on the training and validation sets
+    history = model.fit(X_train, y_train, epochs=epochs, validation_data=(X_val, y_val))
 
 # Define a function to perform grid search
 def grid_search(X_train, y_train, X_val, y_val, epochs, population_size=10, n_generations=10):
@@ -134,6 +186,10 @@ def train_model(train_file, val_file, test_file,
 
 # Define a function to generate random hyperparameters
 def generate_hyperparameters():
+    lr_values = [0.001, 0.01, 0.1]
+    reg_values = [0.01, 0.1, 1]
+    return (lr_values, reg_values)
+
     return (toolbox.lr(), toolbox.reg())
 
     # Define an individual as a list of hyperparameters
