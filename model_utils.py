@@ -1,6 +1,8 @@
 # model_utils.py
 
 import os
+import time
+import random
 
 # Set the CUDA_VISIBLE_DEVICES environment variable to use only the first GPU
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -34,17 +36,76 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 import deap
 from deap import base, creator, tools
 
-import random
+    # Generate a random seed based on the current time
+    random_seed = int(time.time())
 
-# Generate a random seed based on the current time
-random_seed = int(time.time())
+    # Use the random seed to initialize the random number generator
+    random.seed(random_seed)
 
-# Use the random seed to initialize the random number generator
-random.seed(random_seed)
+    # Set the random seed to ensure reproducibility
+    RANDOM_SEED = random_seed
+    np.random.seed(RANDOM_SEED)
 
-# Set the random seed to ensure reproducibility
-RANDOM_SEED = random_seed
-np.random.seed(RANDOM_SEED)
+#Import visualization_utils
+import visualizations_utils
+
+# Define a function to generate random hyperparameters
+def generate_hyperparameters():
+    return (toolbox.lr(), toolbox.reg())
+
+    # Define an individual as a list of hyperparameters
+    creator.create("Individual", list, fitness=creator.FitnessMax)
+
+    # Define the population as a list of individuals
+    toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
+    # Define the mutation and crossover operators
+    toolbox.register("mate", tools.cxTwoPoint)
+    toolbox.register("mutate", tools.mutUniformInt, low=0, up=1, indpb=0.05)
+
+    # Define the selection operator
+    toolbox.register("select", tools.selTournament, tournsize=3)
+
+# Define the evolutionary training function
+def evolutionary_train(model, X_train, y_train, X_val, y_val, epochs, population_size=10, n_generations=10):
+    # Initialize the population
+    population = toolbox.population(n=population_size)
+
+    # Evolve the population
+    for generation in range(n_generations):
+        # Apply the evolutionary operators to generate a new population
+        offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.1)
+
+        # Evaluate the fitness of the individuals in the offspring
+        fitnesses = model.evaluate(offspring, X_train, y_train, X_val, y_val, epochs=epochs)
+
+        # Select the best individuals from the current and next generations
+        population = toolbox.select(population + offspring, k=population_size)
+
+    # Return the best individual in the final generation
+    return population
+
+# Define a function to perform grid search
+def grid_search(X_train, y_train, X_val, y_val, epochs, population_size=10, n_generations=10):
+    # Create a KerasClassifier object
+    model = KerasClassifier(build_fn=create_model, epochs=epochs, verbose=0)
+
+    # Define the grid search parameters
+    hyperparameters = generate_hyperparameters()
+    param_grid = dict(lr=hyperparameters[0], reg=hyperparameters[1])
+
+    # Perform the grid search
+    grid = GridSearchCV(estimator=model, param_grid=param_grid, cv=3)
+    grid_result = grid.fit(X_train, y_train)
+
+    # Print the grid search results
+            print(f"Best: {grid_result.best_score_} using {grid_result.best_params_}")
+        means = grid_result.cv_results_['mean_test_score']
+        stds = grid_result.cv_results_['std_test_score']
+        params = grid_result.cv_results_['params']
+        for mean, stdev, param in zip(means, stds, params):
+            print(f"mean={mean:.4f}, std={stdev:.4f} with: {param}")
+
 
 # Define a function that returns the learning rate for a given epoch
 def lr_schedule(epoch):
@@ -65,30 +126,52 @@ def train_model(train_file, val_file, test_file,
     X_val, y_val = preprocess_data(X_val, y_val)
     X_test, y_test = preprocess_data(X_test, y_test)
     
-    if evolutionary:
-        # Define the evolutionary algorithm
-toolbox = base.Toolbox()
+    # Define the model
+    model = create_model(lr=lr, reg=reg)
 
-# Define the search space
-toolbox.register("lr", uniform, 0.01, 0.1)
-toolbox.register("reg", uniform, 0.001, 0.1)
+    # Define the learning rate scheduler
+    lr_scheduler = LearningRateScheduler(lr_schedule, verbose=0)
+
+    # Define the callbacks
+    callbacks = [lr_scheduler]
 
 # Define a function to generate random hyperparameters
 def generate_hyperparameters():
     return (toolbox.lr(), toolbox.reg())
 
-# Define an individual as a list of hyperparameters
-creator.create("Individual", list, fitness=creator.FitnessMax)
+    # Define an individual as a list of hyperparameters
+    creator.create("Individual", list, fitness=creator.FitnessMax)
 
-# Define the population as a list of individuals
-toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+    # Define the population as a list of individuals
+    toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
-# Define the mutation and crossover operators
-toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", tools.mutUniformInt, low=0, up=1, indpb=0.05)
+    # Define the mutation and crossover operators
+    toolbox.register("mate", tools.cxTwoPoint)
+    toolbox.register("mutate", tools.mutUniformInt, low=0, up=1, indpb=0.05)
 
-# Define the selection operator
-toolbox.register("select", tools.selTournament, tournsize=3)
+    # Define the selection operator
+    toolbox.register("select", tools.selTournament, tournsize=3)
+    
+ # If evolutionary training is enabled, use Deap to evolve the hyperparameters
+    if evolutionary:
+        
+        # Define the evolutionary algorithm
+        toolbox = base.Toolbox()
+
+        # Define the search space
+        toolbox.register("lr", uniform, 0.01, 0.1)
+        toolbox.register("reg", uniform, 0.001, 0.1)
+        
+        # Define an individual as a list of hyperparameters
+        creator.create("Individual", list, fitness=creator.FitnessMax)
+        
+        # Define the population as a list of individuals
+    toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
+# Define the fitness function
+def evaluate_model(individual):
+            lr, reg = individual
+            model = create_model(lr=lr, reg=reg)
 
 # Define the main evolutionary loop
 def main():
@@ -226,4 +309,3 @@ if __name__ == "__main__":
     test_loss, test_acc = model.evaluate(X_test, y_test)
     print("Test loss:", test_loss)
     print("Test accuracy:", test_acc)
-
